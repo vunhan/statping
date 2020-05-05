@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"github.com/ararog/timeago"
 	"io"
 	"io/ioutil"
 	"net"
@@ -15,6 +14,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/ararog/timeago"
 )
 
 var (
@@ -117,7 +118,7 @@ func (t Timestamp) Ago() string {
 // Command will run a terminal command with 'sh -c COMMAND' and return stdout and errOut as strings
 //		in, out, err := Command("sass assets/scss assets/css/base.css")
 func Command(name string, args ...string) (string, string, error) {
-	Log.Info("running command: " + name + strings.Join(args, " "))
+	Log.Info("Running command: " + name + " " + strings.Join(args, " "))
 	testCmd := exec.Command(name, args...)
 	var stdout, stderr []byte
 	var errStdout, errStderr error
@@ -234,6 +235,7 @@ func HttpRequest(url, method string, content interface{}, headers []string, body
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: !verifySSL,
 			ServerName:         verifyHost,
+			Renegotiation:      tls.RenegotiateOnceAsClient,
 		},
 		DisableKeepAlives:     true,
 		ResponseHeaderTimeout: timeout,

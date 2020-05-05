@@ -224,14 +224,22 @@ func CheckHttp(s *Service, record bool) *Service {
 	timeout := time.Duration(s.Timeout) * time.Second
 	var content []byte
 	var res *http.Response
-	var cnx string
 	var data *bytes.Buffer
 	var headers []string
+	contentType := "application/json" // default Content-Type
 
 	if s.Headers.Valid {
 		headers = strings.Split(s.Headers.String, ",")
 	} else {
 		headers = nil
+	}
+
+	// check if 'Content-Type' header was defined
+	for _, header := range headers {
+		if strings.Split(header, "=")[0] == "Content-Type" {
+			contentType = strings.Split(header, "=")[1]
+			break
+		}
 	}
 
 	if s.Redirect.Bool {
@@ -244,11 +252,14 @@ func CheckHttp(s *Service, record bool) *Service {
 		data = bytes.NewBuffer(nil)
 	}
 
-	if s.Method == "POST" {
-		cnx = "application/json"
+	// force set Content-Type to 'application/json' if requests are made
+	// with POST method
+	if s.Method == "POST" && contentType != "application/json" {
+		contentType = "application/json"
 	}
 
-	content, res, err = utils.HttpRequest(s.Domain, s.Method, cnx, headers, data, timeout, s.VerifySSL.Bool)
+	content, res, err = utils.HttpRequest(s.Domain, s.Method, contentType,
+		headers, data, timeout, s.VerifySSL.Bool)
 	if err != nil {
 		if record {
 			recordFailure(s, fmt.Sprintf("HTTP Error %v", err))
@@ -368,7 +379,7 @@ func sendFailure(s *Service, f *failures.Failure) {
 		return
 	}
 
-	if s.NotifyAfter == 0 || s.notifyAfterCount > s.NotifyAfter {
+	if s.notifyAfterCount > s.NotifyAfter {
 		for _, n := range allNotifiers {
 			notif := n.Select()
 			if notif.CanSend() {

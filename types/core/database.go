@@ -47,13 +47,13 @@ func (c *Core) Create() error {
 		Name:        c.Name,
 		Description: c.Description,
 		ConfigFile:  utils.Directory + "/config.yml",
-		ApiKey:      utils.RandomString(32),
 		ApiSecret:   secret,
 		Version:     App.Version,
 		Domain:      c.Domain,
 		MigrationId: utils.Now().Unix(),
 	}
 	q := db.Create(&newCore)
+	utils.Log.Infof("API Key created: %s", secret)
 	return q.Error()
 }
 

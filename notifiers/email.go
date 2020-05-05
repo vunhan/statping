@@ -155,39 +155,46 @@ type emailOutgoing struct {
 	Subject  string
 	Template string
 	From     string
-	Data     interface{}
+	Data     replacer
 	Source   string
 	Sent     bool
 }
 
 // OnFailure will trigger failing service
 func (e *emailer) OnFailure(s *services.Service, f *failures.Failure) error {
+	subject := fmt.Sprintf("Service %s is Offline", s.Name)
 	email := &emailOutgoing{
 		To:       e.Var2,
-		Subject:  fmt.Sprintf("Service %v is Failing", s.Name),
+		Subject:  subject,
 		Template: mainEmailTemplate,
-		Data:     ToMap(s, f),
-		From:     e.Var1,
+		Data: replacer{
+			Service: s,
+			Failure: f,
+		},
+		From: e.Var1,
 	}
 	return e.dialSend(email)
 }
 
 // OnSuccess will trigger successful service
 func (e *emailer) OnSuccess(s *services.Service) error {
-	msg := s.DownText
+	subject := fmt.Sprintf("Service %s is Back Online", s.Name)
 	email := &emailOutgoing{
 		To:       e.Var2,
-		Subject:  msg,
+		Subject:  subject,
 		Template: mainEmailTemplate,
-		Data:     ToMap(s, nil),
-		From:     e.Var1,
+		Data: replacer{
+			Service: s,
+			Failure: &failures.Failure{},
+		},
+		From: e.Var1,
 	}
 	return e.dialSend(email)
 }
 
 // OnTest triggers when this notifier has been saved
 func (e *emailer) OnTest() (string, error) {
-	testService := &services.Service{
+	testService := services.Service{
 		Id:             1,
 		Name:           "Example Service",
 		Domain:         "https://www.youtube.com/watch?v=-u6DvRyyKGU",
@@ -206,8 +213,11 @@ func (e *emailer) OnTest() (string, error) {
 		To:       e.Var2,
 		Subject:  subject,
 		Template: mainEmailTemplate,
-		Data:     testService,
-		From:     e.Var1,
+		Data: replacer{
+			Service: &testService,
+			Failure: &failures.Failure{},
+		},
+		From: e.Var1,
 	}
 	err := e.dialSend(email)
 	return subject, err
@@ -225,7 +235,7 @@ func (e *emailer) dialSend(email *emailOutgoing) error {
 	m.SetHeader("From", email.From)
 	m.SetHeader("To", email.To)
 	m.SetHeader("Subject", email.Subject)
-	m.SetBody("text/html", utils.ReplaceTemplate(email.Template, email.Data))
+	m.SetBody("text/html", ReplaceTemplate(email.Template, email.Data))
 
 	if err := mailer.DialAndSend(m); err != nil {
 		utils.Log.Errorln(fmt.Sprintf("email '%v' sent to: %v (size: %v) %v", email.Subject, email.To, len([]byte(email.Source)), err))
